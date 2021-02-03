@@ -210,11 +210,18 @@ def TimeEvolve(position, rxnVessel, j):
     # way to get around the problem.
     if(j % 1e5 == 0):
         timeElapsed = dT * j
-        with open("Part2.dat", "a") as f:
-            f.write(str(timeElapsed) + "\t")
-            for s in rxnVessel[position].species:
-                f.write(str(s["Conc"]) + "\t")
-            f.write("\n")
+        if(noX == noY == 1):
+            with open("Part2.dat", "a") as f:
+                f.write(str(timeElapsed) + "\t")
+                for s in rxnVessel[position].species:
+                    f.write(str(s["Conc"]) + "\t")
+                f.write("\n")
+        else:
+            with open("Part2-2D.dat", "a") as f:
+                f.write(str(timeElapsed) + "\t")
+                for s in rxnVessel[position].species:
+                    f.write(str(s["Conc"]) + "\t")
+                f.write("\n")
 
 
 speciesMaster = []
@@ -264,58 +271,75 @@ if(answer == 1):
 elif(answer == 2):
     # This lets the user input a general reaction system. I am quite happy
     # with this...
+    print("Use system from handout? Works best for 1x1. Better results for 2D"
+          + " by increasing concentrations (yes/no)")
+    answer = input()
+    if(answer == "yes"):
+        speciesMaster = [{"Name": "A", "Conc": 0.06, "Change": 0.0},
+                         {"Name": "B", "Conc": 0.06, "Change": 0.0},
+                         {"Name": "P", "Conc": 0.0, "Change": 0.0},
+                         {"Name": "Q", "Conc": 0.0, "Change": 0.0},
+                         {"Name": "X", "Conc": 1.58e-10, "Change": 0.0},
+                         {"Name": "Y", "Conc": 3.02e-7, "Change": 0.0},
+                         {"Name": "Z", "Conc": 4.786e-8, "Change": 0.0}]
+        Reactions = [Reaction(["A", "Y"], ["X", "P"], [1.34, 0]),
+                     Reaction(["X", "Y"], ["P"], [1.6e9, 0]),
+                     Reaction(["B", "X"], ["X", "X", "Z"], [8e3, 0]),
+                     Reaction(["X", "X"], ["Q"], [4e7, 0]),
+                     Reaction(["Z"], ["Y"], [1, 0])]
+    elif(answer == "no"):
+        # Number of species
+        print("How many distinct species in total?")
+        noSpecies = int(input())
 
-    # Number of species
-    print("How many distinct species in total?")
-    noSpecies = int(input())
+        # Species names and concentrations
+        for i in range(noSpecies):
+            print("Species " + str(i+1) + " name:")
+            speciesName = input()
+            print("Species " + str(i+1) + " initital concentration:")
+            speciesConc = input()
+            speciesMaster.append({"Name": speciesName,
+                                  "Conc": float(speciesConc),
+                                  "Change": 0.0})
 
-    # Species names and concentrations
-    for i in range(noSpecies):
-        print("Species " + str(i+1) + " name:")
-        speciesName = input()
-        print("Species " + str(i+1) + " initital concentration:")
-        speciesConc = input()
-        speciesMaster.append({"Name": speciesName, "Conc": float(speciesConc),
-                              "Change": 0.0})
+        # Reactions
+        print("How many pairs of reactions (forward + back)?")
+        noRxn = int(input())
 
-    # Reactions
-    print("How many pairs of reactions (forward + back)?")
-    noRxn = int(input())
+        # Loop over each reaction
+        for i in range(noRxn):
+            reactants = []
+            products = []
+            rates = []
 
-    # Loop over each reaction
-    for i in range(noRxn):
-        reactants = []
-        products = []
-        rates = []
+            # Number of reactants and products
+            print("How many moles of reactants in reaction " + str(i+1) + "?")
+            noMolesReact = int(input())
 
-        # Number of reactants and products
-        print("How many moles of reactants in reaction " + str(i+1) + "?")
-        noMolesReact = int(input())
+            print("How many moles of products in reaction " + str(i+1) + "?")
+            noMolesProd = int(input())
 
-        print("How many moles of products in reaction " + str(i+1) + "?")
-        noMolesProd = int(input())
+            print("If a species is present in multiple moles, input " +
+                  "it that many times below.")
+            # Names of the products and reactants
+            for j in range(noMolesReact):
+                print("Name of reactant mole " + str(j+1) + ":")
+                reactants.append(input())
+            for j in range(noMolesProd):
+                print("Name of product mole " + str(j+1) + ":")
+                products.append(input())
 
-        print("If a species is present in multiple moles, input " +
-              "it that many times below.")
-        # Names of the products and reactants
-        for j in range(noMolesReact):
-            print("Name of reactant mole " + str(j+1) + ":")
-            reactants.append(input())
-        for j in range(noMolesProd):
-            print("Name of product mole " + str(j+1) + ":")
-            products.append(input())
+            # Rates of forward and back reactions
+            print("Rate of forward reaction:")
+            rates.append(float(input()))
+            print("Rate of back reaction (0 if none):")
+            rates.append(float(input()))
 
-        # Rates of forward and back reactions
-        print("Rate of forward reaction:")
-        rates.append(float(input()))
-        print("Rate of back reaction (0 if none):")
-        rates.append(float(input()))
+            Reactions.append(Reaction(reactants, products, rates))
 
-        Reactions.append(Reaction(reactants, products, rates))
-
-    print("Number of points in x direction:")
+    print("Number of points in x direction (1 for single cell):")
     noX = int(input())
-    print("Number of points in y direction:")
+    print("Number of points in y direction (1 for single cell):")
     noY = int(input())
 
     for y in range(noY):
@@ -328,15 +352,23 @@ elif(answer == 2):
     for i in range(len(ReactionVessel)):
         if(i != 0):
             for s in ReactionVessel[i].species:
-                s["Conc"] = s["Conc"] / 25
+                s["Conc"] = s["Conc"] / (x*y)**2
 
     # Header line for the data file.
-    with open("Part2.dat", "w") as f:
-        f.write("# t \t")
-    with open("Part2.dat", "a") as f:
-        for s in speciesMaster:
-            f.write("[" + s["Name"] + "] \t")
-        f.write("\n")
+    if(noX == noY == 1):
+        with open("Part2.dat", "w") as f:
+            f.write("# t \t")
+        with open("Part2.dat", "a") as f:
+            for s in speciesMaster:
+                f.write("[" + s["Name"] + "] \t")
+            f.write("\n")
+    else:
+        with open("Part2-2D.dat", "w") as f:
+            f.write("# t \t")
+        with open("Part2-2D.dat", "a") as f:
+            for s in speciesMaster:
+                f.write("[" + s["Name"] + "] \t")
+            f.write("\n")
 
     timeElapsed = 0
     j = 0
